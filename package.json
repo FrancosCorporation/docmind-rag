@@ -1,12 +1,20 @@
 {
-  "name": "docmind-rag",
-  "version": "0.1.0",
-  "description": "Chat RAG com seus documentos: chunking + embeddings plugaveis + busca vetorial + citacoes de fonte",
-  "main": "server.js",
-  "type": "module",
-  "license": "MIT",
-  "author": "Rodolfo Franco (FrancosCorporation)",
-  "scripts": { "start": "node server.js", "test": "NODE_ENV=test node --test test/rag-test.mjs" },
-  "dependencies": { "express": "^4.21.0" },
-  "engines": { "node": ">=18" }
+ "name": "docmind-rag",
+ "version": "0.1.0",
+ "description": "Chat RAG com seus documentos: chunking + embeddings plugaveis + busca vetorial + citacoes de fonte",
+ "main": "server.js",
+ "type": "module",
+ "license": "MIT",
+ "author": "Rodolfo Franco (FrancosCorporation)",
+ "scripts": {
+  "start": "node server.js",
+  "test": "NODE_ENV=test node --test test/rag-test.mjs && NODE_ENV=test node --test test/m2-test.mjs"
+ },
+ "dependencies": {
+  "express": "^4.21.0",
+  "unpdf": "^0.5.0"
+ },
+ "engines": {
+  "node": ">=18"
+ }
 }
