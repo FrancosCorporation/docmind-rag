@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocMind — Chat RAG com seus documentos</title>
+  <style>
+    :root { --fundo:#0f1318; --carta:#1a2027; --borda:#2c3540; --texto:#e8edf2; --suave:#8b98a5; --verde:#2ea043; --azul:#388bfd; --roxo:#8A2BE2; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Segoe UI",system-ui,Arial,sans-serif; background:var(--fundo); color:var(--texto); min-height:100vh; display:flex; flex-direction:column; }
+    header { padding:14px 18px; border-bottom:1px solid var(--borda); }
+    header h1 { font-size:18px; } header .sub { color:var(--suave); font-size:12px; }
+    #docs { padding:10px 18px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .doc-tab { background:var(--carta); border:1px solid var(--borda); color:var(--texto); padding:6px 12px; border-radius:999px; font-size:12px; cursor:pointer; }
+    .doc-tab.ativo { border-color:var(--roxo); background:#2a1f45; }
+    #mensagens { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px; }
+    .msg { max-width:80%; padding:10px 14px; border-radius:10px; font-size:14px; white-space:pre-wrap; }
+    .pergunta { align-self:flex-end; background:#1f3a5f; border:1px solid #2d5a8f; }
+    .resposta { align-self:flex-start; background:var(--carta); border:1px solid var(--borda); }
+    .fonte { display:inline-block; background:var(--roxo); color:#fff; font-size:10px; padding:2px 8px; border-radius:999px; margin:2px 4px 2px 0; font-weight:700; }
+    .form { display:flex; gap:10px; padding:14px 18px 18px; }
+    .form input { flex:1; background:var(--carta); border:1px solid var(--borda); color:var(--texto); border-radius:8px; padding:12px 14px; font-size:14px; }
+    .form button { background:var(--roxo); border:none; color:#fff; font-weight:700; border-radius:8px; padding:12px 20px; cursor:pointer; }
+    .upload { display:flex; gap:8px; }
+    .upload input { font-size:12px; }
+    .upload button { background:var(--verde); font-size:12px; padding:6px 12px; }
+    #texto-doc { width:100%; background:var(--carta); border:1px solid var(--borda); color:var(--texto); border-radius:8px; padding:8px; font-size:12px; min-height:60px; display:none; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧠 DocMind</h1>
+    <span class="sub">chat RAG com citações — ingestione um documento e pergunte</span>
+  </header>
+  <div id="docs">
+    <span style="font-size:12px;color:var(--suave)">Documentos:</span>
+    <span id="lista-docs" style="display:flex;gap:8px;flex-wrap:wrap"></span>
+    <div class="upload">
+      <textarea id="texto-doc" placeholder="Cole aqui o texto do documento e clique em Ingerir..."></textarea>
+      <button id="btn-abrir-upload">+ ingerir doc</button>
+      <button id="btn-ingerir" style="display:none">Ingerir</button>
+    </div>
+  </div>
+  <div id="mensagens"></div>
+  <form class="form" id="form-chat">
+    <input id="pergunta" placeholder="Pergunte sobre o documento...">
+    <button type="submit">Perguntar</button>
+  </form>
+  <script>
+    let docAtivo = null;
+    const $ = (s) => document.querySelector(s);
+
+    async function atualizarDocs() {
+      const docs = await fetch('/api/docs').then((r) => r.json());
+      $('#lista-docs').innerHTML = docs.map((d) =>
+        `<span class="doc-tab ${d.nome === docAtivo ? 'ativo' : ''}" onclick="selecionar('${d.nome}')">${d.nome} (${d.blocos} blocos)</span>`
+      ).join('');
+    }
+    function selecionar(nome) { docAtivo = nome; atualizarDocs(); }
+
+    $('#btn-abrir-upload').addEventListener('click', () => {
+      const ta = $('#texto-doc');
+      const ing = $('#btn-ingerir');
+      const aberto = ta.style.display !== 'none';
+      ta.style.display = aberto ? 'none' : 'block';
+      ing.style.display = aberto ? 'none' : 'inline-block';
+    });
+    $('#btn-ingerir').addEventListener('click', async () => {
+      const texto = $('#texto-doc').value.trim();
+      if (!texto) return;
+      const nome = 'doc-' + Date.now().toString(36).slice(-4);
+      const r = await fetch('/api/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, texto }) });
+      if (r.ok) { $('#texto-doc').value = ''; $('#btn-abrir-upload').click(); selecionar(nome); }
+    });
+
+    $('#form-chat').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pergunta = $('#pergunta').value.trim();
+      if (!pergunta || !docAtivo) return;
+      $('#pergunta').value = '';
+      msg(pergunta, 'pergunta');
+      msg('pensando...', 'resposta');
+      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pergunta, doc: docAtivo }) });
+      document.querySelectorAll('.msg.resposta').forEach((m) => { if (m.textContent === 'pensando...') m.remove(); });
+      const dados = await r.json();
+      if (dados.resposta) {
+        const div = msg('', 'resposta');
+        div.innerHTML = dados.fontes.map((f) => `<span class="fonte">doc ${f}</span>`).join('') + '\n' + dados.resposta.replace(/</g, '<');
+      } else {
+        msg('erro: ' + (dados.erro?.mensagem || '?'), 'resposta');
+      }
+    });
+    function msg(texto, classe) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + classe;
+      div.textContent = texto;
+      $('#mensagens').appendChild(div);
+      $('#mensagens').scrollTop = $('#mensagens').scrollHeight;
+      return div;
+    }
+    atualizarDocs();
+  </script>
+</body>
+</html>

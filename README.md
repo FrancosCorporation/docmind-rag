@@ -1,6 +1,7 @@
 # DocMind — RAG Chat With Your Documents
 
-![Status](https://img.shields.io/badge/status-em%20constru%C3%A7%C3%A3o-orange)
+![Status](https://img.shields.io/badge/M1-funcionando%20(9%2F9%20testes)-brightgreen)
+![CI](https://img.shields.io/badge/CI-test%20%2B%20license%20check-blue)
 ![Node](https://img.shields.io/badge/Node-%3E%3D18-green?logo=node.js&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-RAG%20%2B%20citations-8A2BE2)
 ![License](https://img.shields.io/badge/license-MIT-green)
