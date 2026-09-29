@@ -10,7 +10,7 @@ const PORTA = 3897;
 const BASE = `http://localhost:${PORTA}`;
 
 const servidor = spawn('node', ['server.js'], {
-  env: { ...process.env, PORT: String(PORTA), TMPDIR: TMP },
+  env: { ...process.env, NODE_ENV: 'ci-child', PORT: String(PORTA), TMPDIR: TMP },
   stdio: 'ignore'
 });
 servidor.unref();
