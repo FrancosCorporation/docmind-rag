@@ -483,3 +483,20 @@ node --check server.js src/rag.js
 
 *Fim do plano. Gerado por leitura direta do código em 2026-10-02. Nenhum item já estava corrigido*
 *— todos apontam para defeitos ainda presentes.*
+
+---
+
+## Registro de execução — 2026-10-11
+
+Implementações realizadas nesta rodada:
+
+- `SEC-01`: instruções do modelo foram separadas em `system`; pergunta e fontes são enviadas como dados JSON. Respostas do provedor precisam citar identificadores de fonte presentes no contexto. Isso reduz a superfície de prompt injection, sem garantir que modelos nunca sejam influenciados por documentos.
+- `SEC-02`, `SEC-03`, `SEC-06` e `BUG-01`: IDs UUID gerados no servidor; token Bearer obrigatório em toda a API; biblioteca isolada por instância; documentos com nomes repetidos coexistem.
+- `SEC-04` e `IMP-01`: fontes devolvidas com `docId`, `chunk`, `citation` e trecho verificável.
+- `SEC-05`: limite de 30 ingestões por hora por biblioteca, além de limite geral por origem.
+- `BUG-02` e `IMP-03`: documentos, blocos e conversas persistidos em SQLite; cotas de 1.000 documentos/100 MB por biblioteca e histórico limitado a 100 registros por documento.
+- `BUG-03` e `BUG-04`: erros internos de PDF não são enviados ao cliente; o SSE interrompe geração e escrita após a desconexão.
+- `IMP-02`, `DEVOPS-01`, `DOC-01` e `DOC-02`: modo lexical e backend aparecem na resposta; banco e artefatos são ignorados; README e `SECURITY.md` descrevem privacidade, configuração e limites.
+- Interface renovada para upload de PDF/texto, seleção por ID, histórico e conferência de fontes. Compose usa volume persistente, token obrigatório e porta local.
+
+Os testes existentes foram atualizados para enviar o token e usar o ID do servidor. `TEST-01` (novo caso de prompt injection) não foi adicionado. Nenhum teste ou serviço foi executado. A verificação desta rodada foi estática: `node --check` nos arquivos JavaScript, validação de JSON do `package.json`, `git diff --check`, busca por HTML dinâmico inseguro na interface e conferência de que `data/` está ignorada. As caixas da definição de pronto continuam abertas até a validação comportamental.

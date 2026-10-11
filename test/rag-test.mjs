@@ -46,13 +46,14 @@ test('busca: top-k com score ordenado', async () => {
   assert.ok(top.some((t) => t.conteudo.includes('Sul')), 'achou o trecho da região Sul');
 });
 
-test('LLM local (mock grounded): responde com citação [doc N]', async () => {
+test('LLM local (mock grounded): responde com citação estável', async () => {
   const blocos = await ingerir(TEXTO, { chunkOpts: { tamanho: 200 } });
   const llm = criarLLM({}); // sem baseUrl => local/mock
   const perguntaVetor = embedLocal('qual o produto mais vendido?');
   const contexto = buscar(blocos, perguntaVetor, 2);
   const r = await llm.responder('qual o produto mais vendido?', contexto);
-  assert.ok(r.resposta.includes('[doc'), 'citação presente');
+  assert.ok(r.fontes[0]?.citation, 'a fonte tem identificador estável');
+  assert.ok(r.resposta.includes(r.fontes[0].citation), 'citação presente');
   assert.ok(r.resposta.includes('plano Pro'), 'conteúdo correto');
 });
 
@@ -68,8 +69,11 @@ test('LLM local: pergunta fora do doc => "não encontrei"', async () => {
 // ---- API real (servidor em porta de teste) ----
 const PORTA = 3895;
 const BASE = `http://localhost:${PORTA}`;
+const API_TOKEN = 'docmind-test-token-minimum-32-characters';
+const TEST_DATA = mkdtempSync(join('/tmp', 'docmind-rag-test-'));
+let docId;
 const servidor = spawn('node', ['server.js'], {
-  env: { ...process.env, NODE_ENV: 'ci-child', PORT: String(PORTA), TMPDIR: '/media/servidor/nvme_data/tmp-opencode' },
+  env: { ...process.env, NODE_ENV: 'ci-child', PORT: String(PORTA), DOCMIND_API_TOKEN: API_TOKEN, DOCMIND_DB_PATH: join(TEST_DATA, 'test.sqlite') },
   stdio: 'ignore'
 });
 servidor.unref();
@@ -85,7 +89,7 @@ for (let i = 0; i < 20; i++) {
 const chamar = (metodo, rota, corpo) =>
   fetch(BASE + rota, {
     method: metodo,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
     body: corpo ? JSON.stringify(corpo) : undefined
   }).then(async (r) => ({ status: r.status, corpo: await r.json().catch(() => null) }));
 
@@ -93,12 +97,14 @@ test('API: ingest cria documento (201) e lista', async () => {
   const r = await chamar('POST', '/api/ingest', { nome: 'relatorio-vendas', texto: TEXTO });
   assert.equal(r.status, 201);
   assert.ok(r.corpo.blocos >= 1);
+  docId = r.corpo.id;
+  assert.ok(docId, 'a API devolve um id gerado pelo servidor');
   const lista = await chamar('GET', '/api/docs');
-  assert.ok(lista.corpo.some((d) => d.nome === 'relatorio-vendas'));
+  assert.ok(lista.corpo.some((d) => d.id === docId && d.nome === 'relatorio-vendas'));
 });
 
 test('API: chat responde com citações ao vivo', async () => {
-  const r = await chamar('POST', '/api/chat', { pergunta: 'como foi o churn?', doc: 'relatorio-vendas' });
+  const r = await chamar('POST', '/api/chat', { pergunta: 'como foi o churn?', doc: docId });
   assert.equal(r.status, 200);
   assert.ok(r.corpo.resposta.includes('3%'), 'resposta grounded correta');
   assert.ok(Array.isArray(r.corpo.fontes));

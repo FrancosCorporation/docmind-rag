@@ -5,12 +5,21 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const TMP = mkdtempSync(join('/media/servidor/nvme_data/tmp-opencode', 'dm-'));
+const TMP = mkdtempSync(join('/tmp', 'dm-'));
 const PORTA = 3897;
 const BASE = `http://localhost:${PORTA}`;
+const API_TOKEN = 'docmind-m2-test-token-minimum-32-characters';
+let docId;
 
 const servidor = spawn('node', ['server.js'], {
-  env: { ...process.env, NODE_ENV: 'ci-child', PORT: String(PORTA), TMPDIR: TMP },
+  env: {
+    ...process.env,
+    NODE_ENV: 'ci-child',
+    PORT: String(PORTA),
+    DOCMIND_API_TOKEN: API_TOKEN,
+    DOCMIND_DB_PATH: join(TMP, 'docmind.sqlite'),
+    TMPDIR: TMP
+  },
   stdio: 'ignore'
 });
 servidor.unref();
@@ -38,27 +47,28 @@ test('M2: upload de PDF REAL (unpdf extrai o texto)', async () => {
   const buf = readFileSync(PDF);
   const r = await comRetry(() => fetch(`${BASE}/api/ingest-pdf?nome=vendas-pdf`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/octet-stream' },
+    headers: { 'Content-Type': 'application/octet-stream', Authorization: `Bearer ${API_TOKEN}` },
     body: buf
   }));
   const corpo = await r.json(); // lê UMA vez (body é consumível)
   assert.equal(r.status, 201, `ingest-pdf: ${JSON.stringify(corpo)}`);
   assert.ok(corpo.blocos >= 1);
   assert.equal(corpo.paginas, 1);
+  docId = corpo.id;
 });
 
 test('M2: chat sobre o PDF respond com grounded', async () => {
   const r = await fetch(`${BASE}/api/chat`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pergunta: 'qual o produto mais vendido?', doc: 'vendas-pdf' })
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
+    body: JSON.stringify({ pergunta: 'qual o produto mais vendido?', doc: docId })
   }).then((x) => x.json());
   assert.ok(r.resposta.includes('plano Pro'));
 });
 
 test('M2: STREAMING SSE (tokens chegando em pedaços + fim)', async () => {
   const r = await comRetry(() => fetch(`${BASE}/api/chat?stream=1`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pergunta: 'qual o churn mensal?', doc: 'vendas-pdf' })
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
+    body: JSON.stringify({ pergunta: 'qual o churn mensal?', doc: docId })
   }));
   assert.equal(r.headers.get('content-type'), 'text/event-stream', 'SSE');
   const texto = await r.text();
@@ -70,9 +80,9 @@ test('M2: STREAMING SSE (tokens chegando em pedaços + fim)', async () => {
 });
 
 test('M2: conversas persistentes (histórico com 2 trocas)', async () => {
-  await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pergunta: 'e a região sul?', doc: 'vendas-pdf' }) });
-  const hist = await fetch(`${BASE}/api/conversa/vendas-pdf`).then((r) => r.json());
+  await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
+    body: JSON.stringify({ pergunta: 'e a região sul?', doc: docId }) });
+  const hist = await fetch(`${BASE}/api/conversa/${docId}`, { headers: { Authorization: `Bearer ${API_TOKEN}` } }).then((r) => r.json());
   assert.ok(hist.length >= 6, `histórico com as trocas: ${hist.length} registros`);
   assert.ok(hist.some((h) => h.papel === 'ia'));
   assert.ok(hist.some((h) => h.papel === 'usuario'));
@@ -80,8 +90,12 @@ test('M2: conversas persistentes (histórico com 2 trocas)', async () => {
 
 test('M2: PDF escaneado (sem texto) rejeitado com mensagem clara', async () => {
   // PDF "vazio": bytes de ftyp mas não-pdf... gera um PDF com 1 página em branco via gs? simplifica: texto vazio
-  const r = await fetch(`${BASE}/api/ingest-pdf`, { method: 'POST', body: Buffer.from('não é um pdf') });
-  assert.equal(r.status, 500, 'PDF inválido rejeitado (não crasha)');
+  const r = await fetch(`${BASE}/api/ingest-pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/pdf', Authorization: `Bearer ${API_TOKEN}` },
+    body: Buffer.from('não é um pdf')
+  });
+  assert.equal(r.status, 400, 'PDF inválido rejeitado com erro genérico');
 });
 
 process.on('exit', () => servidor.kill());

@@ -2,8 +2,17 @@ services:
   docmind:
     build: .
     ports:
-      - "3300:3300"
+      - "127.0.0.1:3300:3300"
     environment:
+      DOCMIND_API_TOKEN: ${DOCMIND_API_TOKEN:?configure DOCMIND_API_TOKEN in .env}
+      DOCMIND_DB_PATH: /app/data/docmind.sqlite
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
+    volumes:
+      - docmind-data:/app/data
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
+
+volumes:
+  docmind-data:

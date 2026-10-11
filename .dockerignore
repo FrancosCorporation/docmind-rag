@@ -1,0 +1,9 @@
+.git
+.env
+.planning
+node_modules
+data
+*.db*
+*.sqlite*
+package-lock.json
+*.log
