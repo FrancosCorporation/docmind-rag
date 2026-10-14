@@ -500,3 +500,7 @@ Implementações realizadas nesta rodada:
 - Interface renovada para upload de PDF/texto, seleção por ID, histórico e conferência de fontes. Compose usa volume persistente, token obrigatório e porta local.
 
 Os testes existentes foram atualizados para enviar o token e usar o ID do servidor. `TEST-01` (novo caso de prompt injection) não foi adicionado. Nenhum teste ou serviço foi executado. A verificação desta rodada foi estática: `node --check` nos arquivos JavaScript, validação de JSON do `package.json`, `git diff --check`, busca por HTML dinâmico inseguro na interface e conferência de que `data/` está ignorada. As caixas da definição de pronto continuam abertas até a validação comportamental.
+
+## Registro de execução — 2026-10-14
+
+- **DEVOPS-03:** CI fixada em Ubuntu 24.04, Actions v7 pinadas por SHA, matriz Node 22/24, `npm ci` e gate `npm audit --audit-level=high`. Criados `plan.md`/`resumo.md` padronizados.
