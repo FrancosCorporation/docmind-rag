@@ -28,6 +28,7 @@
 - **OBJ-01 (P2, concluído nesta sessão):** CI previsível com gates.
 - **OBJ-02 (P2, pendente TEST-01):** caso de teste dedicado a prompt injection quando testes forem liberados para adição.
 - **OBJ-03 (P3, recomendação):** expor métricas de ingestão/latência no endpoint de saúde.
+- **OBJ-04 (P3, recomendação):** versionar uma fixture PDF mínima gerada (ou textual via `fpdf`-style builder) para reativar os 4 testes de PDF em qualquer ambiente, removendo o skip condicional criado em 2026-10-14.
 
 ## 5. Melhorias técnicas
 

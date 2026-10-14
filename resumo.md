@@ -21,10 +21,14 @@ Chat RAG self-hosted já endurecido em 2026-10-11 (SEC/BUG/IMP/DEVOPS/DOC comple
 | `MELHORIAS.md` | nota de sessão | rastreabilidade |
 
 ### 5. Problemas encontrados
-Nenhum novo.
+Três achados reais além do previsto, todos resolvidos na sessão:
+1. **Lockfile não versionado** (quebrava `npm ci`/cache/audit) → versionado.
+2. **Cadeia vulnerável real** exposta pelo primeiro audit com lock: `unpdf ≤0.5.4` → `pdfjs-dist ≤4.7.76` (JS arbitrário em PDF malicioso) + `tar` (9 advisories) via canvas → mitigado subindo `unpdf ^1.8.1` (API idêntica); `npm audit` completo = 0 (SEC-07 no MELHORIAS).
+3. **CI vermelha desde 2026-09-27**: `test/m2-test.mjs` exigia fixture host-local (`/media/servidor/nvme_data/tmp-opencode/teste.pdf`); os 4 testes dependentes de `docId` agora pulam com skip condicional fora do host do autor.
 
 ### 6. Decisões técnicas
 - Nenhum teste novo (TEST-01 continua como pendência explícita, OBJ-02 do plano).
+- Fixture em repo (PDF mínimo gerado) ficou como OBJ-04 — não criada agora para não inventar fixture sem validação comportamental da extração real.
 
 ### 7. Testes e validações
 - Local: `git diff --check` limpo; nenhum código alterado.
