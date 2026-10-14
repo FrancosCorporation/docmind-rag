@@ -504,3 +504,5 @@ Os testes existentes foram atualizados para enviar o token e usar o ID do servid
 ## Registro de execução — 2026-10-14
 
 - **DEVOPS-03:** CI fixada em Ubuntu 24.04, Actions v7 pinadas por SHA, matriz Node 22/24, `npm ci` e gate `npm audit --audit-level=high`. Criados `plan.md`/`resumo.md` padronizados.
+
+- **SEC-07 (2026-10-14):** lockfile versionado expôs cadeia vulnerável real — `unpdf ≤0.5.4` → `pdfjs-dist ≤4.7.76` (execução de JS em PDF malicioso, GHSA-wgrm-67xf-hhpq) + `tar` (9 advisories). Mitigação: `unpdf` atualizado para `^1.8.1` (API idêntica: `getDocumentProxy`+`extractText`); `pdfjs-dist`/`tar`/`canvas` saíram da árvore. `npm audit` completo = **0 vulnerabilidades**.
