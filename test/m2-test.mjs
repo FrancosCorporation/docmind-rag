@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const TMP = mkdtempSync(join('/tmp', 'dm-'));
@@ -31,6 +31,10 @@ for (let i = 0; i < 25; i++) {
 }
 
 const PDF = '/media/servidor/nvme_data/tmp-opencode/teste.pdf';
+// A fixture é um arquivo local do autor; fora desse host os cenários dependentes
+// são pulados para a CI ficar determinística (ver plan.md, OBJ-04).
+const PDF_DISPONIVEL = existsSync(PDF);
+const SEM_FIXTURE = PDF_DISPONIVEL ? false : 'fixture teste.pdf ausente fora do host do autor';
 
 // retry para falhas transitórias de socket sob o runner (loga a causa)
 async function comRetry(fn, n = 3) {
@@ -43,7 +47,7 @@ async function comRetry(fn, n = 3) {
   }
 }
 
-test('M2: upload de PDF REAL (unpdf extrai o texto)', async () => {
+test('M2: upload de PDF REAL (unpdf extrai o texto)', { skip: SEM_FIXTURE }, async () => {
   const buf = readFileSync(PDF);
   const r = await comRetry(() => fetch(`${BASE}/api/ingest-pdf?nome=vendas-pdf`, {
     method: 'POST',
@@ -57,7 +61,7 @@ test('M2: upload de PDF REAL (unpdf extrai o texto)', async () => {
   docId = corpo.id;
 });
 
-test('M2: chat sobre o PDF respond com grounded', async () => {
+test('M2: chat sobre o PDF respond com grounded', { skip: SEM_FIXTURE }, async () => {
   const r = await fetch(`${BASE}/api/chat`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
     body: JSON.stringify({ pergunta: 'qual o produto mais vendido?', doc: docId })
@@ -65,7 +69,7 @@ test('M2: chat sobre o PDF respond com grounded', async () => {
   assert.ok(r.resposta.includes('plano Pro'));
 });
 
-test('M2: STREAMING SSE (tokens chegando em pedaços + fim)', async () => {
+test('M2: STREAMING SSE (tokens chegando em pedaços + fim)', { skip: SEM_FIXTURE }, async () => {
   const r = await comRetry(() => fetch(`${BASE}/api/chat?stream=1`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
     body: JSON.stringify({ pergunta: 'qual o churn mensal?', doc: docId })
@@ -79,7 +83,7 @@ test('M2: STREAMING SSE (tokens chegando em pedaços + fim)', async () => {
   assert.ok(completo.includes('3 por cento'), 'resposta completa reconstruída do stream');
 });
 
-test('M2: conversas persistentes (histórico com 2 trocas)', async () => {
+test('M2: conversas persistentes (histórico com 2 trocas)', { skip: SEM_FIXTURE }, async () => {
   await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_TOKEN}` },
     body: JSON.stringify({ pergunta: 'e a região sul?', doc: docId }) });
   const hist = await fetch(`${BASE}/api/conversa/${docId}`, { headers: { Authorization: `Bearer ${API_TOKEN}` } }).then((r) => r.json());
